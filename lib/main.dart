@@ -181,13 +181,19 @@ class MyHomePage extends StatelessWidget {
               Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => EditTaskScreen()));
             },
-            label: const Text('Add New Task ')),
+            label: Row(
+              children: [
+                Text('Add New Task '),
+                SizedBox(width: 12,),
+                Icon(CupertinoIcons.add),
+              ],
+            )),
       ),
     );
   }
 }
 
-class TaskItem extends StatelessWidget {
+class TaskItem extends StatefulWidget {
   const TaskItem({
     Key? key,
     required this.taskEntity,
@@ -196,11 +202,22 @@ class TaskItem extends StatelessWidget {
   final Task taskEntity;
 
   @override
+  State<TaskItem> createState() => _TaskItemState();
+}
+
+class _TaskItemState extends State<TaskItem> {
+  @override
   Widget build(BuildContext context) {
-    ThemeData themeData = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    final ThemeData themeData = Theme.of(context);
+    return InkWell(
+      onTap: () {
+        setState(() {
+          widget.taskEntity.isCompleted = !widget.taskEntity.isCompleted;
+        });
+      },
       child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: 13),
         height: 80,
         decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
@@ -210,8 +227,22 @@ class TaskItem extends StatelessWidget {
             ]),
         child: Row(
           children: [
-            Text(taskEntity.name),
-            MyCheckBox(value: taskEntity.isCompleted)
+            MyCheckBox(value: widget.taskEntity.isCompleted),
+            const SizedBox(
+              width: 12,
+            ),
+            Expanded(
+              child: Text(
+                widget.taskEntity.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 18,
+                    decoration: widget.taskEntity.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null),
+              ),
+            ),
           ],
         ),
       ),
@@ -263,17 +294,20 @@ class MyCheckBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData themeData = Theme.of(context);
     return Container(
-        width: 24,
-        height: 24,
+        width: 20,
+        height: 20,
         decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: value ? Border.all(color: secondaryTextColor) : null,
+            border:
+                !value ? Border.all(color: secondaryTextColor, width: 2) : null,
             color: value ? primaryColor : null),
         child: value
             ? Icon(
                 CupertinoIcons.check_mark,
-                color: Colors.white,
+                color: themeData.colorScheme.onPrimary,
+                size: 14,
               )
             : null);
   }
