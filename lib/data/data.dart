@@ -5,12 +5,15 @@ part 'data.g.dart';
 @HiveType(typeId: 0)
 class Task extends HiveObject{
   @HiveField(0)
-  String name = '';
+  int id=-1;
 
   @HiveField(1)
-  bool isCompleted = false;
+  String name = '';
 
   @HiveField(2)
+  bool isCompleted = false;
+
+  @HiveField(3)
   Priority priority = Priority.low;
 }
 
