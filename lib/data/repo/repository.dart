@@ -40,9 +40,6 @@ class Repository<T> with ChangeNotifier implements DataSource {
 
   @override
   Future<List<T>> getAll({String searchKeyword = ''}) async {
-    final List<T> result =
-        await localDataSource.getAll(searchKeyword: searchKeyword);
-    notifyListeners();
-    return result;
+    return await localDataSource.getAll(searchKeyword: searchKeyword);
   }
 }

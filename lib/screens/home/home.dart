@@ -1,23 +1,47 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:todo_list/data/data.dart';
 import 'package:todo_list/data/repo/repository.dart';
 import 'package:todo_list/main.dart';
 import 'package:todo_list/screens/edit/edit.dart';
+import 'package:todo_list/screens/edit/edit_task_cubit.dart';
+import 'package:todo_list/screens/home/bloc/task_list_bloc.dart';
 import 'package:todo_list/widgets/widgets.dart';
 
 class MyHomePage extends StatelessWidget {
   MyHomePage({Key? key}) : super(key: key);
-  final ValueNotifier<String> searchKeywordNotifier = ValueNotifier('');
+
   final TextEditingController controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
-    return SafeArea(
-      child: Scaffold(
-        body: Column(
+    return Scaffold(
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => BlocProvider(
+                      create: (context) => EditTaskCubit(
+                          Task(), context.read<Repository<Task>>()),
+                      child: const EditTaskScreen(),
+                    )));
+          },
+          label: Row(
+            children: const [
+              Text('Add New Task '),
+              SizedBox(
+                width: 12,
+              ),
+              Icon(CupertinoIcons.add),
+            ],
+          )),
+      body: BlocProvider<TaskListBloc>(
+        create: (context) => TaskListBloc(context.read<Repository<Task>>()),
+        child: SafeArea(
+            child: Column(
           children: [
             Container(
               padding: EdgeInsets.all(12.0),
@@ -62,7 +86,7 @@ class MyHomePage extends StatelessWidget {
                         ]),
                     child: TextField(
                       onChanged: (value) {
-                        searchKeywordNotifier.value = controller.text;
+                        context.read<TaskListBloc>().add(TaskListSearch(value));
                       },
                       controller: controller,
                       decoration: const InputDecoration(
@@ -75,53 +99,34 @@ class MyHomePage extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: ValueListenableBuilder(
-                valueListenable: searchKeywordNotifier,
-                builder: (context, value, child) {
-                  final repository = Provider.of<Repository<Task>>(context);
-                  return Consumer<Repository<Task>>(
-                    builder: (ctx, repository, child) {
-                      return FutureBuilder<List<Task>>(
-                        future:
-                            repository.getAll(searchKeyword: controller.text),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            if (snapshot.data!.isNotEmpty) {
-                              return TaskList(
-                                  items: snapshot.data!, themeData: themeData);
-                            } else {
-                              return const EmptyState();
-                            }
-                          } else {
-                            return const CircularProgressIndicator();
-                          }
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => EditTaskScreen(
-                        task: Task(),
-                      )));
-            },
-            label: Row(
-              children: [
-                Text('Add New Task '),
-                SizedBox(
-                  width: 12,
-                ),
-                Icon(CupertinoIcons.add),
-              ],
+            Expanded(child: Consumer<Repository<Task>>(
+              builder: (context, repository, child) {
+                context.read<TaskListBloc>().add(TaskListStarted());
+                return BlocBuilder<TaskListBloc, TaskListState>(
+                    builder: (context, state) {
+                  if (state is TaskListSuccess) {
+                    return TaskList(items: state.items, themeData: themeData);
+                  } else if (state is TaskListEmptyDb) {
+                    return const EmptyState();
+                  } else if (state is TaskListLoading ||
+                      state is TaskListInitial) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  } else if (state is TaskListError) {
+                    return Center(
+                      child: Text(
+                        state.message,
+                      ),
+                    );
+                  } else {
+                    throw Exception("state is not valid");
+                  }
+                });
+              },
             )),
+          ],
+        )),
       ),
     );
   }
@@ -169,8 +174,7 @@ class TaskList extends StatelessWidget {
                   color: const Color(0xffEAEFF5),
                   textColor: secondaryTextColor,
                   onPressed: () {
-                    final repository = Provider.of<Repository<Task>>(context,listen: false);
-                    repository.deleteAll();
+                    context.read<TaskListBloc>().add(TaskListDeleteAll());
                   },
                   elevation: 0,
                   child: Row(
@@ -230,8 +234,10 @@ class _TaskItemState extends State<TaskItem> {
       },
       onTap: () {
         Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => EditTaskScreen(
-                  task: widget.taskEntity,
+            builder: (context) => BlocProvider<EditTaskCubit>(
+                  create: (context) => EditTaskCubit(
+                      widget.taskEntity, context.read<Repository<Task>>()),
+                  child: const EditTaskScreen(),
                 )));
       },
       child: Container(
